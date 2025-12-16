@@ -1,4 +1,4 @@
-# affected
+# graphite-transitive-dependencies
 
 Compute affected packages in a monorepo by traversing the dependency graph. Used to partition PRs into merge queue zones and protect against semantic conflicts.
 
