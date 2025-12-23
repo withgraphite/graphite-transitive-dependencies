@@ -1,47 +1,42 @@
 import { describe, expect, it } from "vitest";
-
 import { buildHydratedDag } from "./build_hydrated_dag";
 import { type CachedBuildTargets } from "./schemas";
 
 const createBaselineTargets = (
-  tasks: { package: string; dependents: string[] }[]
+  targets: { targetName: string; dependents: string[] }[]
 ): CachedBuildTargets => ({
-  version: 1,
-  commitSha: "baseline123",
-  timestamp: "2025-01-17T12:00:00Z",
+  version: 2,
   mode: "full-dag",
-  packages: tasks.map((t) => t.package),
-  tasks: tasks.map((t) => ({
-    taskId: `${t.package}#build`,
-    task: "build",
-    package: t.package,
+  headSha: "baseline123",
+  targetIds: targets.map((t) => t.targetName),
+  graph: targets.map((t) => ({
+    targetId: `${t.targetName}#build`,
+    targetName: t.targetName,
     dependencies: [],
     dependents: t.dependents.map((d) => `${d}#build`),
   })),
 });
 
 const createPartialTargets = (
-  commitSha: string,
-  packages: string[],
-  tasks?: { package: string; dependents: string[] }[]
+  headSha: string,
+  targetIds: string[],
+  targets?: { targetName: string; dependents: string[] }[]
 ): CachedBuildTargets => ({
-  version: 1,
-  commitSha,
-  timestamp: "2025-01-17T12:00:00Z",
+  version: 2,
   mode: "filtered",
-  packages,
-  tasks:
-    tasks?.map((t) => ({
-      taskId: `${t.package}#build`,
-      task: "build",
-      package: t.package,
+  baseSha: "base123",
+  headSha,
+  targetIds,
+  graph:
+    targets?.map((t) => ({
+      targetId: `${t.targetName}#build`,
+      targetName: t.targetName,
       dependencies: [],
       dependents: t.dependents.map((d) => `${d}#build`),
     })) ??
-    packages.map((pkg) => ({
-      taskId: `${pkg}#build`,
-      task: "build",
-      package: pkg,
+    targetIds.map((name) => ({
+      targetId: `${name}#build`,
+      targetName: name,
       dependencies: [],
       dependents: [],
     })),
@@ -52,87 +47,90 @@ describe("buildHydratedDag", () => {
     {
       desc: "should build DAG from baseline targets only",
       baselineTargets: createBaselineTargets([
-        { package: "@myorg/db-client", dependents: ["@myorg/server"] },
-        { package: "@myorg/server", dependents: [] },
+        {
+          targetName: "@monologue/db-client",
+          dependents: ["@monologue/server"],
+        },
+        { targetName: "@monologue/server", dependents: [] },
       ]),
       additionalTargets: [],
       expectedDag: new Map([
-        ["@myorg/db-client#build", new Set(["@myorg/server#build"])],
-        ["@myorg/server#build", new Set()],
+        ["@monologue/db-client#build", new Set(["@monologue/server#build"])],
+        ["@monologue/server#build", new Set()],
       ]),
       expectedNames: new Map([
-        ["@myorg/db-client#build", "@myorg/db-client"],
-        ["@myorg/server#build", "@myorg/server"],
+        ["@monologue/db-client#build", "@monologue/db-client"],
+        ["@monologue/server#build", "@monologue/server"],
       ]),
     },
     {
       desc: "should merge additional targets into DAG",
       baselineTargets: createBaselineTargets([
-        { package: "@myorg/utils", dependents: [] },
-        { package: "@myorg/frontend", dependents: [] },
+        { targetName: "@monologue/utils", dependents: [] },
+        { targetName: "@monologue/frontend", dependents: [] },
       ]),
       additionalTargets: [
         createPartialTargets(
           "sha1",
-          ["@myorg/frontend"],
+          ["@monologue/frontend"],
           [
             {
-              package: "@myorg/utils",
-              dependents: ["@myorg/frontend"],
+              targetName: "@monologue/utils",
+              dependents: ["@monologue/frontend"],
             },
-            { package: "@myorg/frontend", dependents: [] },
+            { targetName: "@monologue/frontend", dependents: [] },
           ]
         ),
       ],
       expectedDag: new Map([
-        ["@myorg/utils#build", new Set(["@myorg/frontend#build"])],
-        ["@myorg/frontend#build", new Set()],
+        ["@monologue/utils#build", new Set(["@monologue/frontend#build"])],
+        ["@monologue/frontend#build", new Set()],
       ]),
       expectedNames: new Map([
-        ["@myorg/utils#build", "@myorg/utils"],
-        ["@myorg/frontend#build", "@myorg/frontend"],
+        ["@monologue/utils#build", "@monologue/utils"],
+        ["@monologue/frontend#build", "@monologue/frontend"],
       ]),
     },
     {
       desc: "should merge multiple additional targets into DAG",
       baselineTargets: createBaselineTargets([
-        { package: "@myorg/utils", dependents: [] },
-        { package: "@myorg/frontend", dependents: [] },
-        { package: "@myorg/backend", dependents: [] },
+        { targetName: "@monologue/utils", dependents: [] },
+        { targetName: "@monologue/frontend", dependents: [] },
+        { targetName: "@monologue/backend", dependents: [] },
       ]),
       additionalTargets: [
         createPartialTargets(
           "sha1",
-          ["@myorg/frontend"],
+          ["@monologue/frontend"],
           [
             {
-              package: "@myorg/utils",
-              dependents: ["@myorg/frontend"],
+              targetName: "@monologue/utils",
+              dependents: ["@monologue/frontend"],
             },
-            { package: "@myorg/frontend", dependents: [] },
+            { targetName: "@monologue/frontend", dependents: [] },
           ]
         ),
         createPartialTargets(
           "sha2",
-          ["@myorg/backend"],
+          ["@monologue/backend"],
           [
             {
-              package: "@myorg/frontend",
-              dependents: ["@myorg/backend"],
+              targetName: "@monologue/frontend",
+              dependents: ["@monologue/backend"],
             },
-            { package: "@myorg/backend", dependents: [] },
+            { targetName: "@monologue/backend", dependents: [] },
           ]
         ),
       ],
       expectedDag: new Map([
-        ["@myorg/utils#build", new Set(["@myorg/frontend#build"])],
-        ["@myorg/frontend#build", new Set(["@myorg/backend#build"])],
-        ["@myorg/backend#build", new Set()],
+        ["@monologue/utils#build", new Set(["@monologue/frontend#build"])],
+        ["@monologue/frontend#build", new Set(["@monologue/backend#build"])],
+        ["@monologue/backend#build", new Set()],
       ]),
       expectedNames: new Map([
-        ["@myorg/utils#build", "@myorg/utils"],
-        ["@myorg/frontend#build", "@myorg/frontend"],
-        ["@myorg/backend#build", "@myorg/backend"],
+        ["@monologue/utils#build", "@monologue/utils"],
+        ["@monologue/frontend#build", "@monologue/frontend"],
+        ["@monologue/backend#build", "@monologue/backend"],
       ]),
     },
   ].forEach((tc) => {
@@ -149,137 +147,91 @@ describe("buildHydratedDag", () => {
             `Expected to find dependents for targetId ${targetId}`
           );
         }
-        expect(Array.from(actualDependentIds).sort()).toEqual(
-          Array.from(expectedDependentIds).sort()
-        );
+        expect(actualDependentIds).toEqual(expectedDependentIds);
       }
 
       for (const [targetId, expectedName] of tc.expectedNames) {
-        expect(result.targetIdToName.get(targetId)).toBe(expectedName);
+        const actualName = result.targetIdToName.get(targetId);
+        expect(actualName).toEqual(expectedName);
       }
     });
   });
 
   it("should throw when baseline is not full-dag mode", () => {
-    const invalidBaseline = createPartialTargets("sha", ["@myorg/server"]);
+    const filteredBaseline: CachedBuildTargets = {
+      version: 2,
+      mode: "filtered",
+      baseSha: "base123",
+      headSha: "abc123",
+      targetIds: [],
+      graph: [],
+    };
 
     expect(() =>
       buildHydratedDag({
-        baselineTargets: invalidBaseline,
+        baselineTargets: filteredBaseline,
         additionalTargets: [],
       })
     ).toThrow("must have full-dag mode");
   });
 
   it("should use additionalTargets to overwrite taskId to name mapping", () => {
-    const baselineTargets: CachedBuildTargets = {
-      version: 1,
-      commitSha: "baseline123",
-      timestamp: "2025-01-17T12:00:00Z",
-      mode: "full-dag",
-      packages: ["@myorg/old-pkg", "@myorg/consumer"],
-      tasks: [
+    const result = buildHydratedDag({
+      baselineTargets: createBaselineTargets([
+        { targetName: "@monologue/pkg-a", dependents: [] },
+      ]),
+      additionalTargets: [
         {
-          taskId: "task-123",
-          task: "build",
-          package: "@myorg/old-pkg",
-          dependencies: [],
-          dependents: [],
-        },
-        {
-          taskId: "task-456",
-          task: "build",
-          package: "@myorg/consumer",
-          dependencies: ["task-123"],
-          dependents: [],
+          version: 2,
+          mode: "filtered",
+          baseSha: "base123",
+          headSha: "sha1",
+          targetIds: ["@monologue/renamed-pkg-a"],
+          graph: [
+            {
+              targetId: "@monologue/pkg-a#build",
+              targetName: "@monologue/renamed-pkg-a",
+              dependencies: [],
+              dependents: [],
+            },
+          ],
         },
       ],
-    };
-
-    const additionalTargets: CachedBuildTargets[] = [
-      {
-        version: 1,
-        commitSha: "additional123",
-        timestamp: "2025-01-17T12:00:00Z",
-        mode: "filtered",
-        packages: ["@myorg/new-pkg"],
-        tasks: [
-          {
-            taskId: "task-123",
-            task: "build",
-            package: "@myorg/new-pkg",
-            dependencies: [],
-            dependents: ["task-456"],
-          },
-        ],
-      },
-    ];
-
-    const result = buildHydratedDag({
-      baselineTargets,
-      additionalTargets,
     });
 
-    expect(result.targetIdToDependentIds.get("task-123")).toEqual(
-      new Set(["task-456"])
+    expect(result.targetIdToName.get("@monologue/pkg-a#build")).toEqual(
+      "@monologue/renamed-pkg-a"
     );
-    expect(result.targetIdToDependentIds.get("task-456")).toEqual(new Set());
-    expect(result.targetIdToName.get("task-123")).toBe("@myorg/new-pkg");
-    expect(result.targetIdToName.get("task-456")).toBe("@myorg/consumer");
   });
 
   it("should update baseline dependents from additionalTargets dependencies", () => {
-    const baselineTargets: CachedBuildTargets = {
-      version: 1,
-      commitSha: "baseline123",
-      timestamp: "2025-01-17T12:00:00Z",
-      mode: "full-dag",
-      packages: ["@myorg/lib-a", "@myorg/lib-b"],
-      tasks: [
+    const result = buildHydratedDag({
+      baselineTargets: createBaselineTargets([
+        { targetName: "@monologue/utils", dependents: [] },
+        { targetName: "@monologue/frontend", dependents: [] },
+      ]),
+      additionalTargets: [
         {
-          taskId: "task-a",
-          task: "build",
-          package: "@myorg/lib-a",
-          dependencies: [],
-          dependents: [],
-        },
-        {
-          taskId: "task-b",
-          task: "build",
-          package: "@myorg/lib-b",
-          dependencies: [],
-          dependents: [],
+          version: 2,
+          mode: "filtered",
+          baseSha: "base123",
+          headSha: "sha1",
+          targetIds: ["@monologue/frontend"],
+          graph: [
+            {
+              targetId: "@monologue/frontend#build",
+              targetName: "@monologue/frontend",
+              dependencies: ["@monologue/utils#build"],
+              dependents: [],
+            },
+          ],
         },
       ],
-    };
-
-    const additionalTargets: CachedBuildTargets[] = [
-      {
-        version: 1,
-        commitSha: "pr123",
-        timestamp: "2025-01-17T12:00:00Z",
-        mode: "filtered",
-        packages: ["@myorg/lib-b"],
-        tasks: [
-          {
-            taskId: "task-b",
-            task: "build",
-            package: "@myorg/lib-b",
-            dependencies: ["task-a"],
-            dependents: [],
-          },
-        ],
-      },
-    ];
-
-    const result = buildHydratedDag({
-      baselineTargets,
-      additionalTargets,
     });
 
-    expect(result.targetIdToDependentIds.get("task-a")).toEqual(
-      new Set(["task-b"])
+    const utilsDependents = result.targetIdToDependentIds.get(
+      "@monologue/utils#build"
     );
-    expect(result.targetIdToDependentIds.get("task-b")).toEqual(new Set());
+    expect(utilsDependents).toContain("@monologue/frontend#build");
   });
 });

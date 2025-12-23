@@ -1,6 +1,6 @@
 {
   "name": "graphite-transitive-dependencies",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Standalone build targets DAG library for computing transitive dependencies",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

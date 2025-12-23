@@ -1,55 +1,49 @@
 import { z } from "zod";
 
 /**
- * Build tool agnostic task schema
- * This is the internal contract for representing build tasks
+ * Build tool agnostic target schema (owned by us)
+ * This is our internal contract for representing build targets
  */
-export const BuildTaskSchema = z.object({
-  // Opaque unique identifier for this task
-  taskId: z.string(),
-  // Task name (e.g., "build", "test")
-  task: z.string(),
-  // Package name (e.g., "@myorg/server")
-  package: z.string(),
-  // Task IDs that this task depends on
+export const TargetSchema = z.object({
+  // Unique identifier for the target, e.g., "@monologue/server#build" or W12345
+  targetId: z.string(),
+  // Target name, e.g., "@monologue/server" or "core"
+  targetName: z.optional(z.string()),
+  // Target IDs that this target depends on
   dependencies: z.array(z.string()),
-  // Task IDs that depend on this task
+  // Target IDs that depend on this target
   dependents: z.array(z.string()),
 });
 
-export type BuildTask = z.infer<typeof BuildTaskSchema>;
+export type Target = z.infer<typeof TargetSchema>;
 
-/**
- * Turbo-specific task schema (external contract)
- * Used for parsing Turbo dry-run output
- */
-export const TurboTaskSchema = z.object({
-  taskId: z.string(),
-  task: z.string(),
-  package: z.string(),
-  hash: z.string().optional(),
-  inputs: z.record(z.string()).optional(),
-  dependencies: z.array(z.string()),
-  dependents: z.array(z.string()),
-  directory: z.string().optional(),
-});
-
-export type TurboTask = z.infer<typeof TurboTaskSchema>;
+export const CACHED_BUILD_TARGETS_VERSION = 2;
 
 /**
  * Schema for cached build targets per commit
  */
-export const CachedBuildTargetsSchema = z.object({
-  version: z.literal(1),
-  commitSha: z.string(),
-  timestamp: z.string(),
-  // "full-dag" = complete dependency graph (main branch)
-  // "filtered" = only affected packages (PR branches)
-  mode: z.enum(["full-dag", "filtered"]),
-  // List of affected package names (e.g., ["@myorg/server"])
-  packages: z.array(z.string()),
-  // Tasks with their dependency relationships (build-tool agnostic)
-  tasks: z.array(BuildTaskSchema),
-});
+export const CachedBuildTargetsSchema = z.discriminatedUnion("mode", [
+  // Full DAG mode: baseSha is null (complete dependency graph for main branch)
+  z.object({
+    version: z.literal(CACHED_BUILD_TARGETS_VERSION),
+    mode: z.literal("full-dag"),
+    headSha: z.string(),
+    // List of affected package names (e.g., ["@monologue/server"])
+    targetIds: z.array(z.string()),
+    // Targets with their dependency relationships (build-tool agnostic)
+    graph: z.array(TargetSchema),
+  }),
+  // Filtered mode: both baseSha and headSha are required (only affected packages for PR branches)
+  z.object({
+    version: z.literal(CACHED_BUILD_TARGETS_VERSION),
+    mode: z.literal("filtered"),
+    baseSha: z.string(),
+    headSha: z.string(),
+    // List of affected package names (e.g., ["@monologue/server"])
+    targetIds: z.array(z.string()),
+    // Targets with their dependency relationships (build-tool agnostic)
+    graph: z.array(TargetSchema),
+  }),
+]);
 
 export type CachedBuildTargets = z.infer<typeof CachedBuildTargetsSchema>;

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-
 import { type HydratedDag } from "./build_hydrated_dag";
 import {
+  type ComputedTarget,
   computeTransitiveTargets,
-  type Target,
 } from "./compute_transitive_targets";
 
+// Helper to create a HydratedDag from simple package relationships
 function createHydratedDag(
   packageToDependents: Record<string, string[]>
 ): HydratedDag {
@@ -26,7 +26,8 @@ function createHydratedDag(
   return { targetIdToDependentIds, targetIdToName, nameToTargetIds };
 }
 
-function targetNames(targets: Set<Target>): string[] {
+// Helper to extract names from targets for easier assertion
+function targetNames(targets: Set<ComputedTarget>): string[] {
   return [...targets].map((t) => t.name).sort();
 }
 
@@ -41,49 +42,57 @@ describe("computeTransitiveTargets", () => {
   const testCases: TestCase[] = [
     {
       desc: "should return direct packages when no dependents exist",
-      directPackageNames: ["@myorg/server"],
-      packageToDependents: { "@myorg/server": [] },
-      expectedNames: ["@myorg/server"],
+      directPackageNames: ["@monologue/server"],
+      packageToDependents: { "@monologue/server": [] },
+      expectedNames: ["@monologue/server"],
     },
     {
       desc: "should include transitive dependents",
-      directPackageNames: ["@myorg/db-client"],
+      directPackageNames: ["@monologue/db-client"],
       packageToDependents: {
-        "@myorg/db-client": ["@myorg/server"],
-        "@myorg/server": [],
+        "@monologue/db-client": ["@monologue/server"],
+        "@monologue/server": [],
       },
-      expectedNames: ["@myorg/db-client", "@myorg/server"],
+      expectedNames: ["@monologue/db-client", "@monologue/server"],
     },
     {
       desc: "should handle multi-level transitive dependents",
-      directPackageNames: ["@myorg/utils"],
+      directPackageNames: ["@monologue/utils"],
       packageToDependents: {
-        "@myorg/utils": ["@myorg/frontend"],
-        "@myorg/frontend": ["@myorg/backend"],
-        "@myorg/backend": [],
+        "@monologue/utils": ["@monologue/frontend"],
+        "@monologue/frontend": ["@monologue/backend"],
+        "@monologue/backend": [],
       },
-      expectedNames: ["@myorg/backend", "@myorg/frontend", "@myorg/utils"],
+      expectedNames: [
+        "@monologue/backend",
+        "@monologue/frontend",
+        "@monologue/utils",
+      ],
     },
     {
       desc: "should handle multiple direct packages",
-      directPackageNames: ["@myorg/utils", "@myorg/api"],
+      directPackageNames: ["@monologue/utils", "@monologue/api"],
       packageToDependents: {
-        "@myorg/utils": ["@myorg/frontend"],
-        "@myorg/api": [],
-        "@myorg/frontend": [],
+        "@monologue/utils": ["@monologue/frontend"],
+        "@monologue/api": [],
+        "@monologue/frontend": [],
       },
-      expectedNames: ["@myorg/api", "@myorg/frontend", "@myorg/utils"],
+      expectedNames: [
+        "@monologue/api",
+        "@monologue/frontend",
+        "@monologue/utils",
+      ],
     },
     {
       desc: "should include direct packages not in DAG",
-      directPackageNames: ["@myorg/new-package"],
-      packageToDependents: { "@myorg/server": [] },
-      expectedNames: ["@myorg/new-package"],
+      directPackageNames: ["@monologue/new-package"],
+      packageToDependents: { "@monologue/server": [] },
+      expectedNames: ["@monologue/new-package"],
     },
     {
       desc: "should handle empty direct packages",
       directPackageNames: [],
-      packageToDependents: { "@myorg/server": [] },
+      packageToDependents: { "@monologue/server": [] },
       expectedNames: [],
     },
   ];
@@ -102,15 +111,15 @@ describe("computeTransitiveTargets", () => {
   });
 
   it("should return targets with both id and name", () => {
-    const hydratedDag = createHydratedDag({ "@myorg/server": [] });
+    const hydratedDag = createHydratedDag({ "@monologue/server": [] });
 
     const result = computeTransitiveTargets({
-      directPackageNames: ["@myorg/server"],
+      directPackageNames: ["@monologue/server"],
       hydratedDag,
     });
 
     const target = [...result][0];
-    expect(target.id).toBe("@myorg/server#build");
-    expect(target.name).toBe("@myorg/server");
+    expect(target.id).toEqual("@monologue/server#build");
+    expect(target.name).toEqual("@monologue/server");
   });
 });

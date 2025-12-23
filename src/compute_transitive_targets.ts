@@ -1,6 +1,6 @@
 import { type HydratedDag } from "./build_hydrated_dag";
 
-export type Target = {
+export type ComputedTarget = {
   id: string;
   name: string;
 };
@@ -53,7 +53,7 @@ export function computeTransitiveTargets({
     }
   }
 
-  const targets = new Set<Target>();
+  const targets = new Set<ComputedTarget>();
   for (const targetId of resultTargetIds) {
     const name = targetIdToName.get(targetId);
     if (name) {
