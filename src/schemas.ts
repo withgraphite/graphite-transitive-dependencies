@@ -1,14 +1,25 @@
 import { z } from "zod";
 
 /**
- * Build tool agnostic target schema (owned by us)
- * This is our internal contract for representing build targets
+ * Build tool agnostic target info schema
+ * Contains identifying information for a target
  */
-export const TargetSchema = z.object({
+export const TargetInfoSchema = z.object({
   // Unique identifier for the target, e.g., "@monologue/server#build" or W12345
   targetId: z.string(),
   // Target name, e.g., "@monologue/server" or "core"
   targetName: z.optional(z.string()),
+});
+
+export type TargetInfo = z.infer<typeof TargetInfoSchema>;
+
+/**
+ * Build tool agnostic target schema (owned by us)
+ * This is our internal contract for representing build targets
+ */
+export const TargetSchema = z.object({
+  // Target identifying information
+  target: TargetInfoSchema,
   // Target IDs that this target depends on
   dependencies: z.array(z.string()),
   // Target IDs that depend on this target

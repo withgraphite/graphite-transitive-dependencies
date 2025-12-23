@@ -10,8 +10,10 @@ const createBaselineTargets = (
   headSha: "baseline123",
   targetIds: targets.map((t) => t.targetName),
   graph: targets.map((t) => ({
-    targetId: `${t.targetName}#build`,
-    targetName: t.targetName,
+    target: {
+      targetId: `${t.targetName}#build`,
+      targetName: t.targetName,
+    },
     dependencies: [],
     dependents: t.dependents.map((d) => `${d}#build`),
   })),
@@ -29,14 +31,18 @@ const createPartialTargets = (
   targetIds,
   graph:
     targets?.map((t) => ({
-      targetId: `${t.targetName}#build`,
-      targetName: t.targetName,
+      target: {
+        targetId: `${t.targetName}#build`,
+        targetName: t.targetName,
+      },
       dependencies: [],
       dependents: t.dependents.map((d) => `${d}#build`),
     })) ??
     targetIds.map((name) => ({
-      targetId: `${name}#build`,
-      targetName: name,
+      target: {
+        targetId: `${name}#build`,
+        targetName: name,
+      },
       dependencies: [],
       dependents: [],
     })),
@@ -189,8 +195,10 @@ describe("buildHydratedDag", () => {
           targetIds: ["@monologue/renamed-pkg-a"],
           graph: [
             {
-              targetId: "@monologue/pkg-a#build",
-              targetName: "@monologue/renamed-pkg-a",
+              target: {
+                targetId: "@monologue/pkg-a#build",
+                targetName: "@monologue/renamed-pkg-a",
+              },
               dependencies: [],
               dependents: [],
             },
@@ -219,8 +227,10 @@ describe("buildHydratedDag", () => {
           targetIds: ["@monologue/frontend"],
           graph: [
             {
-              targetId: "@monologue/frontend#build",
-              targetName: "@monologue/frontend",
+              target: {
+                targetId: "@monologue/frontend#build",
+                targetName: "@monologue/frontend",
+              },
               dependencies: ["@monologue/utils#build"],
               dependents: [],
             },

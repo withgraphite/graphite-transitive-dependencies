@@ -24,68 +24,66 @@ export function buildHydratedDag({
     );
   }
 
+  // Build lookup maps between targetId and package name
+  // additionalTargets override baseline mappings
   const targetIdToName = new Map<string, string>();
   const nameToTargetIds = new Map<string, Set<string>>();
 
-  // Process baseline targets
-  for (const target of baselineTargets.graph) {
-    const name = target.targetName || target.targetId;
-    targetIdToName.set(target.targetId, name);
-    if (!nameToTargetIds.has(name)) {
-      nameToTargetIds.set(name, new Set());
+  for (const node of baselineTargets.graph) {
+    const targetName = node.target.targetName ?? `ID:${node.target.targetId}`;
+    targetIdToName.set(node.target.targetId, targetName);
+    if (!nameToTargetIds.has(targetName)) {
+      nameToTargetIds.set(targetName, new Set());
     }
-    nameToTargetIds.get(name)!.add(target.targetId);
+    nameToTargetIds.get(targetName)!.add(node.target.targetId);
   }
 
-  // Process additional targets
   for (const targets of additionalTargets) {
-    for (const target of targets.graph) {
-      const name = target.targetName || target.targetId;
-      targetIdToName.set(target.targetId, name);
-      if (!nameToTargetIds.has(name)) {
-        nameToTargetIds.set(name, new Set());
+    for (const node of targets.graph) {
+      const targetName = node.target.targetName ?? `ID:${node.target.targetId}`;
+      targetIdToName.set(node.target.targetId, targetName);
+      if (!nameToTargetIds.has(targetName)) {
+        nameToTargetIds.set(targetName, new Set());
       }
-      nameToTargetIds.get(name)!.add(target.targetId);
+      nameToTargetIds.get(targetName)!.add(node.target.targetId);
     }
   }
 
-  // Build targetId to dependentIds map
   const targetIdToDependentIds = new Map<string, Set<string>>();
 
-  // Initialize from baseline
-  for (const target of baselineTargets.graph) {
-    if (!targetIdToDependentIds.has(target.targetId)) {
-      targetIdToDependentIds.set(target.targetId, new Set());
+  for (const node of baselineTargets.graph) {
+    if (!targetIdToDependentIds.has(node.target.targetId)) {
+      targetIdToDependentIds.set(node.target.targetId, new Set());
     }
-    const dependentIds = targetIdToDependentIds.get(target.targetId);
+    const dependentIds = targetIdToDependentIds.get(node.target.targetId);
     if (dependentIds) {
-      for (const dependentId of target.dependents) {
+      for (const dependentId of node.dependents) {
         dependentIds.add(dependentId);
       }
     }
   }
 
-  // Add additional targets
   for (const targets of additionalTargets) {
-    for (const target of targets.graph) {
-      if (!targetIdToDependentIds.has(target.targetId)) {
-        targetIdToDependentIds.set(target.targetId, new Set());
+    for (const node of targets.graph) {
+      if (!targetIdToDependentIds.has(node.target.targetId)) {
+        targetIdToDependentIds.set(node.target.targetId, new Set());
       }
 
-      const dependentIds = targetIdToDependentIds.get(target.targetId);
+      // Process dependents (reverse edges from this target)
+      const dependentIds = targetIdToDependentIds.get(node.target.targetId);
       if (dependentIds) {
-        for (const dependentId of target.dependents) {
+        for (const dependentId of node.dependents) {
           dependentIds.add(dependentId);
         }
       }
 
-      // Also update the dependency's dependent list
-      for (const dependencyTargetId of target.dependencies) {
-        const dependencyDependentIds =
-          targetIdToDependentIds.get(dependencyTargetId);
-        if (dependencyDependentIds) {
-          dependencyDependentIds.add(target.targetId);
+      // Process dependencies (forward edges to this target)
+      // For each dependency, add this target as a dependent
+      for (const dependencyTargetId of node.dependencies) {
+        if (!targetIdToDependentIds.has(dependencyTargetId)) {
+          targetIdToDependentIds.set(dependencyTargetId, new Set());
         }
+        targetIdToDependentIds.get(dependencyTargetId)!.add(node.target.targetId);
       }
     }
   }

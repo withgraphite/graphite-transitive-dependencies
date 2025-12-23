@@ -20,8 +20,10 @@ describe("getCachedTargetsForCommit", () => {
         targetIds: ["@monologue/server"],
         graph: [
           {
-            targetId: "@monologue/server#build",
-            targetName: "@monologue/server",
+            target: {
+              targetId: "@monologue/server#build",
+              targetName: "@monologue/server",
+            },
             dependencies: [],
             dependents: ["@monologue/api#build"],
           },
